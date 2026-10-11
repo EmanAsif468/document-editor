@@ -32,14 +32,14 @@ PaperSpace is a web-based document editor that allows users to create, edit, for
 
 ## Project Structure
 
-```
+```text
 document-editor/
 ├── src/          # React frontend
 ├── public/
 ├── server/       # Node.js + Express backend
 │   ├── models/
 │   └── server.js
-├── package.json  # Frontend dependencies
+├── package.json
 └── README.md
 ```
 
@@ -50,28 +50,22 @@ document-editor/
 ```bash
 cd server
 npm install
-node server.js
 ```
 
-Create a `server/.env` file:
+Create a `server/.env` file using `server/.env.example` as a reference, and configure your MongoDB connection string and port.
 
-```
-MONGO_URI=your_mongodb_connection_string
-PORT=5000
-```
-
-The backend runs at http://localhost:5000
+Start the backend using the command configured for your project.
 
 ### 2. Frontend
 
-Open a new terminal in the project root and run:
+Open a terminal in the project root and run:
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open http://localhost:5173 in your browser.
+Open the local URL shown in your terminal.
 
 ## Project Purpose
 
