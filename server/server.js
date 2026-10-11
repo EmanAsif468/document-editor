@@ -37,7 +37,16 @@ function auth(req, res, next) {
   req.userId = userId;
   next();
 }
-app.use("/api/documents", auth);
+// Serverless (Vercel) mein DB connection har request par lazily banta hai
+function withDb(req, res, next) {
+  connectDB()
+    .then(() => next())
+    .catch((err) => {
+      console.error(err);
+      res.status(500).json({ error: "Database connection failed" });
+    });
+}
+app.use("/api/documents", auth, withDb);
 
 // ---- helpers ----
 function validTitle(title) {
@@ -178,22 +187,43 @@ app.use((err, req, res, next) => {
 });
 
 // ---- startup ----
-async function start() {
-  await mongoose.connect(process.env.MONGO_URI);
-  console.log("MongoDB connected");
+let dbPromise = null;
 
-  // Migration: purane documents (bina owner) ko "eman" assign karo
-  const r = await Document.updateMany(
-    { $or: [{ owner: { $exists: false } }, { owner: null }, { owner: "" }] },
-    { $set: { owner: "eman" } }
-  );
-  if (r.modifiedCount) console.log(`Migrated ${r.modifiedCount} old documents to eman`);
+function connectDB() {
+  if (!dbPromise) {
+    dbPromise = mongoose
+      .connect(process.env.MONGO_URI)
+      .then(async () => {
+        console.log("MongoDB connected");
 
-  const PORT = process.env.PORT || 5000;
-  app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+        // Migration: purane documents (bina owner) ko "eman" assign karo
+        const r = await Document.updateMany(
+          { $or: [{ owner: { $exists: false } }, { owner: null }, { owner: "" }] },
+          { $set: { owner: "eman" } }
+        );
+        if (r.modifiedCount) {
+          console.log(`Migrated ${r.modifiedCount} old documents to eman`);
+        }
+      })
+      .catch((err) => {
+        dbPromise = null; // agli request dobara try kare
+        throw err;
+      });
+  }
+  return dbPromise;
 }
 
-start().catch((err) => {
-  console.error("Startup failed:", err.message);
-  process.exit(1);
-});
+// Local: node server.js. Vercel: sirf app export hota hai.
+if (require.main === module) {
+  connectDB()
+    .then(() => {
+      const PORT = process.env.PORT || 5000;
+      app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+    })
+    .catch((err) => {
+      console.error("Startup failed:", err.message);
+      process.exit(1);
+    });
+}
+
+module.exports = app;
